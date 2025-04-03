@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+*.env
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+
+# OS 관련
+.DS_Store
+Thumbs.db
+
+# 환경 변수 파일
+.env
+
+# 기타
+*.sqlite3
