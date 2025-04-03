@@ -2,19 +2,40 @@ import json
 import re
 from config.settings import GEMINI_API_KEY
 import google.generativeai as genai
-from services.db_service import get_mbti_info, get_all_tags
-
+from services.db_service import get_mbti_info, get_all_tags,save_user_answer, get_recent_user_answers,get_feedbacked_answers
 
 genai.configure(api_key=GEMINI_API_KEY)
 
 async def generate_questions():
     prompt = """
-여행 성향 분석을 위한 객관식 질문 5개를 아래 형식으로 생성하세요:
+당신은 여행 성향을 분석하는 AI입니다.
+
+아래 형식으로 총 5개의 객관식 질문을 만들어 주세요.  
+질문은 사용자의 성격, 여행 스타일, 선호도, 즉흥성, 사람들과의 관계 등 MBTI 추론에 도움이 되도록 구성되어야 합니다.
+
+응답 형식은 반드시 JSON이며, 예시는 다음과 같습니다:
+
 {
   "questions": [
     {
-      "question": "당신은 어떤 여행을 선호하나요?",
-      "options": ["자연", "도시", "음식", "즉흥"]
+      "question": "여행을 떠날 때 가장 중요한 요소는 무엇인가요?",
+      "options": ["계획적인 일정", "자유로운 분위기", "친구들과 함께", "새로운 경험"]
+    },
+    {
+      "question": "당신은 여행 중 새로운 사람들과의 만남에 대해 어떻게 생각하나요?",
+      "options": ["반드시 필요하다", "상황에 따라 다르다", "혼자가 더 좋다", "가끔은 좋다"]
+    },
+    {
+      "question": "여행 일정을 어떻게 짜는 편인가요?",
+      "options": ["세부 일정을 사전에 철저히 준비", "큰 틀만 정해두고 유연하게", "즉흥적으로 결정", "누군가 짜주는 대로 움직임"]
+    },
+    {
+      "question": "어떤 분위기의 여행지를 선호하시나요?",
+      "options": ["조용하고 평화로운 자연", "활기찬 도시", "감성적인 풍경", "역사와 전통이 느껴지는 장소"]
+    },
+    {
+      "question": "여행 중 예상치 못한 일이 생기면 어떻게 반응하나요?",
+      "options": ["계획이 틀어지면 스트레스 받는다", "당황하지만 적응한다", "오히려 더 재밌다", "즉시 다른 해결책을 찾는다"]
     }
   ]
 }
@@ -29,17 +50,36 @@ async def generate_questions():
 
 async def generate_rag_recommendation(answers):
     model = genai.GenerativeModel("models/gemini-2.0-flash")
+      # ✅ 1. 피드백 데이터가 있으면 우선 사용, 없으면 최근 데이터 사용
+    feedback_data = get_feedbacked_answers(50)
 
-    # 1. MBTI 예측
+    if feedback_data:
+        context_prompt = "\n".join([
+            f"응답: {row['answers']} → 예측 MBTI: {row['predicted_mbti']} → 동의 여부: {'✅' if row['is_agree'] else '❌'}"
+            for row in feedback_data
+        ])
+    else:
+        recent_data = get_recent_user_answers(50)
+        context_prompt = "\n".join([
+            f"응답: {row['answers']} → 예측된 MBTI: {row['predicted_mbti']}" for row in recent_data
+        ])
+
+    # ✅ 2. MBTI 예측 프롬프트
     mbti_prompt = f"""
+다음은 다른 사용자들의 여행 응답과 그에 대한 MBTI 예측 결과입니다:
+{context_prompt}
+
+그리고 아래는 새로운 사용자의 응답입니다:
 {json.dumps(answers, ensure_ascii=False, indent=2)}
-이 응답 기반으로 MBTI를 추측해 주세요. JSON으로 주세요: {{ "mbti": "ENFP" }}
+
+이 응답자의 MBTI를 예측해주세요. 반드시 JSON으로 응답하세요:
+{{ "mbti": "XXXX" }}
 """
     response = model.generate_content(mbti_prompt)
     mbti_text = re.search(r"```json\n(.*?)```", response.text, re.DOTALL)
     mbti_json = json.loads(mbti_text.group(1)) if mbti_text else json.loads(response.text)
     mbti_type = mbti_json["mbti"]
- 
+    save_user_answer(answers, mbti_type)
 
     # 2. DB에서 설명 가져오기
     trait = get_mbti_info(mbti_type)

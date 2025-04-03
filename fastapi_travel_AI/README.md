@@ -48,7 +48,9 @@ fastapi_travel_AI/
 │
 ├── routers/
 │   ├── question.py           # 객관식 질문 생성 API
-│   └── rag.py                # MBTI 분석 + 감성 추천 API
+│   ├── rag.py                # MBTI 분석 + 감성 추천 API
+│   ├── feedback.py           # 사용자 MBTI 피드백 API
+│   └── stats.py              # 사용자 응답 통계 조회 API
 │
 ├── services/
 │   ├── db_service.py         # MySQL 연동 함수 모음
@@ -63,10 +65,13 @@ fastapi_travel_AI/
 
 ## 🚀 주요 기능
 
-| 기능                  | 설명                                                              | 엔드포인트               |
-| --------------------- | ----------------------------------------------------------------- | ------------------------ |
-| 🔸 객관식 질문 생성   | 여행 성향을 분석하기 위한 질문 5개 생성                           | `GET /generate_question` |
-| 🔸 RAG 기반 성향 분석 | 설문 응답 기반으로 MBTI 예측 + 감성 메시지 + 해시태그 + 지역 추천 | `POST /rag_recommend`    |
+| 기능                  | 설명                                                              | 엔드포인트                  |
+| --------------------- | ----------------------------------------------------------------- | --------------------------- |
+| 🔸 객관식 질문 생성   | 여행 성향을 분석하기 위한 질문 5개 생성                           | `GET /generate_question`    |
+| 🔸 RAG 기반 성향 분석 | 설문 응답 기반으로 MBTI 예측 + 감성 메시지 + 해시태그 + 지역 추천 | `POST /rag_recommend`       |
+| 🔸 사용자 피드백 저장 | 예측된 MBTI 결과에 대한 사용자 피드백 저장                        | `POST /feedback`            |
+| 🔸 응답 통계 조회     | 사용자 응답 통계를 조회하여 분석 정확도 개선 지원                 | `GET /stats`                |
+| 🔸 최근 응답 조회     | 최근 사용자 응답 내역을 조회                                      | `GET /stats/recent_answers` |
 
 ---
 
@@ -98,10 +103,76 @@ POST /rag_recommend
     "description": "친화력 1등! 혼자 여행가도 문제없어 ..."
   },
   "recommendation": "ESFJ님은 계획적이면서도 타인을 잘 챙기는 여행 스타일입니다. ...",
-  "tags": ["#우정여행", "#도시탐방", "#감성사진", ...],
+  "tags": ["#우정여행", "#도시탐방", "#감성사진"],
   "recommended_regions": ["부산", "여수", "전주"]
 }
 ```
+
+### ✅ 최근 사용자 응답 조회 (`/stats/recent_answers`)
+
+```json
+GET /stats/recent_answers
+
+[
+  {
+    "answer_id": 123,
+    "answers": [
+      "나는 자연을 좋아해",
+      "혼자 여행을 즐긴다",
+      "즉흥적인 여행을 좋아해"
+    ],
+    "mbti_result": "ISTP",
+    "created_at": "2025-04-03T10:00:00"
+  },
+  {
+    "answer_id": 124,
+    "answers": [
+      "새로운 사람 만나는 것을 좋아해",
+      "함께 여행하는 것을 선호한다"
+    ],
+    "mbti_result": "ENFP",
+    "created_at": "2025-04-03T11:00:00"
+  }
+]
+```
+
+---
+
+## 🗃️ DB 테이블 구조
+
+### 🔹 `mbti_traits`
+
+| 필드        | 설명                 |
+| ----------- | -------------------- |
+| type        | MBTI 유형 (ex. ENFP) |
+| main_title  | 성향 이름 요약       |
+| sub_title   | 짧은 설명            |
+| description | 상세 성향 설명       |
+| created_at  | 생성일               |
+
+### 🔹 `travel_tags`
+
+| 필드 | 설명                                 |
+| ---- | ------------------------------------ |
+| tag  | 추천 해시태그 문자열 (예: #감성사진) |
+
+### 🔹 `user_answers`
+
+| 필드        | 설명                           |
+| ----------- | ------------------------------ |
+| answer_id   | 응답 고유 ID (자동 생성)       |
+| answers     | 사용자 응답 리스트 (JSON 형태) |
+| mbti_result | 예측된 MBTI 유형               |
+| created_at  | 응답 생성일                    |
+
+### 🔹 `user_feedback`
+
+| 필드        | 설명                            |
+| ----------- | ------------------------------- |
+| feedback_id | 피드백 고유 ID (자동 생성)      |
+| answer_id   | 관련된 user_answers 테이블의 ID |
+| feedback    | 사용자 피드백 (true/false)      |
+| created_at  | 피드백 제출일                   |
 
 ---
 
@@ -148,26 +219,6 @@ uvicorn main:app --reload
 ```
 
 - 로컬 접속: [http://localhost:8000/docs](http://localhost:8000/docs)
-
----
-
-## 🗃️ DB 테이블 구조
-
-### 🔹 `mbti_traits`
-
-| 필드        | 설명                 |
-| ----------- | -------------------- |
-| type        | MBTI 유형 (ex. ENFP) |
-| main_title  | 성향 이름 요약       |
-| sub_title   | 짧은 설명            |
-| description | 상세 성향 설명       |
-| created_at  | 생성일               |
-
-### 🔹 `travel_tags`
-
-| 필드 | 설명                                 |
-| ---- | ------------------------------------ |
-| tag  | 추천 해시태그 문자열 (예: #감성사진) |
 
 ---
 
