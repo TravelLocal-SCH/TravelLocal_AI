@@ -26,8 +26,10 @@ def save_user_answer(answers: list, predicted_mbti: str):
     query = "INSERT INTO user_answers (answers, predicted_mbti) VALUES (%s, %s)"
     cursor.execute(query, (json.dumps(answers, ensure_ascii=False), predicted_mbti))
     conn.commit()
+    inserted_id = cursor.lastrowid  
     cursor.close()
     conn.close()
+    return inserted_id
     
 #피드백을 사용하지않을경우
 def get_recent_answers(limit=10):

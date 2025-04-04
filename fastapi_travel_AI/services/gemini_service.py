@@ -144,7 +144,7 @@ MBTI 유형: {trait['type']}
 
 
 
-    # 5. 지역 추천
+      # 5. 지역 추천
     region_prompt = f"""
 MBTI: {trait['type']}
 설명: {trait['description']}
@@ -154,12 +154,14 @@ MBTI: {trait['type']}
 """
     region_response = model.generate_content(region_prompt)
     region_list = [r.strip() for r in region_response.text.split(",")[:3]]
-
+    user_answer_id = save_user_answer(answers, mbti_type)
     
     return {
         "mbti": mbti_type,
         "trait": trait,
         "recommendation": reco_response.text.strip(),
-        "tags": recommended_tags,#tag_result["tags"],
-        "recommended_regions": region_list
+        "tags": recommended_tags,
+        "recommended_regions": region_list,
+         "user_answer_id": user_answer_id  # ✅ 추가됨!
     }
+  
