@@ -118,7 +118,7 @@ MBTI 유형: {trait['type']}
 
 {json.dumps(answers, ensure_ascii=False, indent=2)}
 
-다음 국내 여행 해시태그 중에서 이 사용자에게 어울리는 10개를 골라주세요:
+다음 국내 여행 해시태그 중에서 이 사용자에게 어울리는 9개를 골라주세요:
 
 {json.dumps(tags, ensure_ascii=False, indent=2)}
 
