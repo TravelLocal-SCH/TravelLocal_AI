@@ -7,12 +7,13 @@ from services.db_service import get_mbti_info, get_all_tags,save_user_answer, ge
 genai.configure(api_key=GEMINI_API_KEY)
 
 async def generate_questions():
-    prompt = """
+    prompt = prompt = """
 당신은 여행 성향을 분석하는 AI입니다.
 
 아래 형식으로 총 5개의 객관식 질문을 만들어 주세요.  
 질문은 사용자의 성격, 여행 스타일, 선호도, 즉흥성, 사람들과의 관계 등 MBTI 추론에 도움이 되도록 구성되어야 합니다.
-mbti에 T_mbti라고 할거야
+MBTI 유형은 내부적으로 'T_' 접두어를 붙여 'T_MBTI' 형식으로 사용하지만, 질문지에는 유형이 표시되면 안 됩니다.
+절대로 질문지에 유형이 무엇인지 적히면 안 됩니다.(T_N,T_F 등)
 응답 형식은 반드시 JSON이며, 예시는 다음과 같습니다:
 
 {
@@ -66,20 +67,26 @@ async def generate_rag_recommendation(answers):
 
     # ✅ 2. MBTI 예측 프롬프트
     mbti_prompt = f"""
-다음은 다른 사용자들의 여행 응답과 그에 대한 MBTI 예측 결과입니다:
+다음은 다른 사용자들의 여행 응답과 그에 대한 T_MBTI 예측 결과입니다:
 {context_prompt}
 
 그리고 아래는 새로운 사용자의 응답입니다:
 {json.dumps(answers, ensure_ascii=False, indent=2)}
 
-이 응답자의 MBTI를 예측해주세요. 반드시 JSON으로 응답하세요:
+이 응답자의 MBTI 유형을 예측해 주세요.
+
+❗❗주의사항❗❗
+- 반드시 MBTI 앞에 "T_"를 붙여서 "T_ENFP", "T_ISTJ" 같은 형식으로 응답해 주세요.
+- MBTI 유형만 JSON으로 주세요.
+- 코드 블록으로 감싸서 응답해 주세요.
+
+```json
 {{ "mbti": "T_XXXX" }}
 """
     response = model.generate_content(mbti_prompt)
     mbti_text = re.search(r"```json\n(.*?)```", response.text, re.DOTALL)
     mbti_json = json.loads(mbti_text.group(1)) if mbti_text else json.loads(response.text)
     mbti_type = mbti_json["mbti"]
-    save_user_answer(answers, mbti_type)
 
     # 2. DB에서 설명 가져오기
     trait = get_mbti_info(mbti_type)
@@ -92,19 +99,20 @@ async def generate_rag_recommendation(answers):
     rag_prompt = f"""
 당신은 여행 심리 전문가입니다.
 
-MBTI 유형과 해당 설명을 보고, 이 유형의 여행 성향, 특징, 선호하는 여행 방식에 대해 요약된 분석 내용을 작성해주세요.
+T_MBTI 유형과 해당 설명을 보고, 이 유형의 여행 성향, 특징, 선호하는 여행 방식에 대해 요약된 분석 내용을 작성해주세요.
 
-MBTI 유형: {trait['type']}
+T_MBTI 유형: {trait['type']}
 설명: {trait['description']}
 
 요청사항:
 - 문장 형식으로 3~5문장 정도
-- 해당 MBTI 유형이 어떤 여행 스타일을 좋아하고 어떤 방식으로 여행을 즐기는지를 알려주세요
+- 해당 T_MBTI 유형이 어떤 여행 스타일을 좋아하고 어떤 방식으로 여행을 즐기는지를 알려주세요
 - 너무 딱딱하지 않지만, 정보 중심으로 설명해주세요
 - 감성적 표현은 피하고, 분석/설명 중심으로 작성해주세요
-
+- T_가 무조건 있도록 해주세요
+- 절대 문장 내에 동일한 MBTI를 여러번 언급하지 마세요
 예시 형식:
-"ENFP 유형은 즉흥적인 여행을 선호하며, 낯선 장소에서도 빠르게 적응합니다. 여행 중 다양한 사람들과 교류하는 것을 즐기며, 계획보다는 분위기를 따라 움직이는 경우가 많습니다."
+"T_ENFP 유형은 즉흥적인 여행을 선호하며, 낯선 장소에서도 빠르게 적응합니다. 여행 중 다양한 사람들과 교류하는 것을 즐기며, 계획보다는 분위기를 따라 움직이는 경우가 많습니다."
 
 이제 작성해주세요:
 """
@@ -146,11 +154,14 @@ MBTI 유형: {trait['type']}
 
       # 5. 지역 추천
     region_prompt = f"""
-MBTI: {trait['type']}
+T_MBTI 유형: {trait['type']}
 설명: {trait['description']}
+
 이 유형에게 어울리는 한국 도시 3개를 콤마로 제시해 주세요.
 요청사항: 
-- 유명 도시말고도 이 유형에게 어울리는 다양한 한국 도시를 추천해줘도 좋아요.
+- 유명 도시만 나열하지 말고, 이 유형의 여행 스타일에 어울리는 다양한 지역을 추천해주세요.
+- 너무 같은 도시만 추천해주지는 마세요.
+- 작은 도시도 좋은 지역이 있으면 추천해주세요.
 """
     region_response = model.generate_content(region_prompt)
     region_list = [r.strip() for r in region_response.text.split(",")[:3]]
