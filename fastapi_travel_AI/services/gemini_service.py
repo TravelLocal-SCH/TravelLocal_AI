@@ -12,7 +12,7 @@ async def generate_questions():
 
 아래 형식으로 총 5개의 객관식 질문을 만들어 주세요.  
 질문은 사용자의 성격, 여행 스타일, 선호도, 즉흥성, 사람들과의 관계 등 MBTI 추론에 도움이 되도록 구성되어야 합니다.
-
+mbti에 T_mbti라고 할거야
 응답 형식은 반드시 JSON이며, 예시는 다음과 같습니다:
 
 {
@@ -73,7 +73,7 @@ async def generate_rag_recommendation(answers):
 {json.dumps(answers, ensure_ascii=False, indent=2)}
 
 이 응답자의 MBTI를 예측해주세요. 반드시 JSON으로 응답하세요:
-{{ "mbti": "XXXX" }}
+{{ "mbti": "T_XXXX" }}
 """
     response = model.generate_content(mbti_prompt)
     mbti_text = re.search(r"```json\n(.*?)```", response.text, re.DOTALL)
