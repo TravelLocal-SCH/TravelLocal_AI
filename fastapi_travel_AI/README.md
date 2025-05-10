@@ -1,6 +1,6 @@
 # 🧭 FastAPI 기반 Travel MBTI RAG 분석 API
 
-이 프로젝트는 여행 관련 설문 응답을 기반으로 사용자의 MBTI를 예측하고, MBTI별 성향에 맞는 감성 메시지, 해시태그, 국내 여행지를 추천하는 **RAG 기반 API 서버**입니다.  
+이 프로젝트는 여행 관련 설문 응답을 기반으로 사용자의 T_MBTI를 예측하고, T_MBTI별 성향에 맞는 감성 메시지, 해시태그, 국내 여행지를 추천하는 **RAG 기반 API 서버**입니다.  
 Google Gemini API와 MySQL DB를 활용하여 사용자 맞춤형 여행 성향 분석을 제공합니다.
 
 ---
@@ -11,9 +11,9 @@ Google Gemini API와 MySQL DB를 활용하여 사용자 맞춤형 여행 성향 
 ↓
 [ Gemini API ]
 
-- MBTI 예측
+- T_MBTI 예측
   ↓
-  [ MySQL DB 검색 (MBTI 설명, 해시태그) ]
+  [ MySQL DB 검색 (T_MBTI 설명, 해시태그) ]
   ↓
   [ Gemini API ]
 - 상세 설명 생성
@@ -21,15 +21,15 @@ Google Gemini API와 MySQL DB를 활용하여 사용자 맞춤형 여행 성향 
 - 해시태그 선택
   ↓
   [ 최종 결과 종합 ]
-  MBTI + 상세 설명 + 해시태그 + 지역 추천
+  T_MBTI + 상세 설명 + 해시태그 + 지역 추천
   ↓
   [ 사용자에게 반환 ]
 
 **RAG(Retrieval-Augmented Generation)** 구조는 다음과 같은 흐름으로 작동합니다:
 
 1. **사용자 설문 응답** → FastAPI에 전달
-2. **Gemini API**로 MBTI 유형 예측
-3. 예측된 MBTI에 따라 **MySQL DB에서 관련 설명/성향 조회**
+2. **Gemini API**로 T_MBTI 유형 예측
+3. 예측된 T_MBTI 따라 **MySQL DB에서 관련 설명/성향 조회**
 4. Gemini에 DB 정보를 포함한 프롬프트로 **감성 메시지, 해시태그, 도시 추천 생성**
 5. 종합된 결과를 사용자에게 JSON 형식으로 응답
 
@@ -48,8 +48,8 @@ fastapi_travel_AI/
 │
 ├── routers/
 │   ├── question.py           # 객관식 질문 생성 API
-│   ├── rag.py                # MBTI 분석 + 감성 추천 API
-│   ├── feedback.py           # 사용자 MBTI 피드백 API
+│   ├── rag.py                # T_MBTI 분석 + 감성 추천 API
+│   ├── feedback.py           # 사용자 T_MBTI 피드백 API
 │   └── stats.py              # 사용자 응답 통계 조회 API
 │
 ├── services/
@@ -68,8 +68,8 @@ fastapi_travel_AI/
 | 기능                  | 설명                                                              | 엔드포인트                  |
 | --------------------- | ----------------------------------------------------------------- | --------------------------- |
 | 🔸 객관식 질문 생성   | 여행 성향을 분석하기 위한 질문 5개 생성                           | `GET /generate_question`    |
-| 🔸 RAG 기반 성향 분석 | 설문 응답 기반으로 MBTI 예측 + 감성 메시지 + 해시태그 + 지역 추천 | `POST /rag_recommend`       |
-| 🔸 사용자 피드백 저장 | 예측된 MBTI 결과에 대한 사용자 피드백 저장                        | `POST /feedback`            |
+| 🔸 RAG 기반 성향 분석 | 설문 응답 기반으로 T_MBTI 예측 + 감성 메시지 + 해시태그 + 지역 추천 | `POST /rag_recommend`       |
+| 🔸 사용자 피드백 저장 | 예측된 T_MBTI 결과에 대한 사용자 피드백 저장                        | `POST /feedback`            |
 | 🔸 응답 통계 조회     | 사용자 응답 통계를 조회하여 분석 정확도 개선 지원                 | `GET /stats`                |
 | 🔸 최근 응답 조회     | 최근 사용자 응답 내역을 조회                                      | `GET /stats/recent_answers` |
 
@@ -96,7 +96,7 @@ POST /rag_recommend
 
 ```json
 {
-  "mbti": "ESFJ",
+  "mbti": "T_ESFJ",
   "trait": {
     "type": "ESFJ",
     "main_title": "사교적인 배려왕",
@@ -121,7 +121,7 @@ GET /stats/recent_answers
       "혼자 여행을 즐긴다",
       "즉흥적인 여행을 좋아해"
     ],
-    "mbti_result": "ISTP",
+    "mbti_result": "T_ISTP",
     "created_at": "2025-04-03T10:00:00"
   },
   {
@@ -144,7 +144,7 @@ GET /stats/recent_answers
 
 | 필드        | 설명                 |
 | ----------- | -------------------- |
-| type        | MBTI 유형 (ex. ENFP) |
+| type        | T_MBTI 유형 (ex. T_ENFP) |
 | main_title  | 성향 이름 요약       |
 | sub_title   | 짧은 설명            |
 | description | 상세 성향 설명       |
@@ -162,7 +162,7 @@ GET /stats/recent_answers
 | ----------- | ------------------------------ |
 | answer_id   | 응답 고유 ID (자동 생성)       |
 | answers     | 사용자 응답 리스트 (JSON 형태) |
-| mbti_result | 예측된 MBTI 유형               |
+| mbti_result | 예측된 T_MBTI 유형               |
 | created_at  | 응답 생성일                    |
 
 ### 🔹 `user_feedback`
